@@ -9,8 +9,10 @@ from engine.update_btc import update_csv
 import requests
 import traceback
 import time
+import os
 
-app = FastAPI(title="Oráculo BTC", version="3.4")
+
+app = FastAPI(title="Oráculo BTC", version="4.0-STABLE")
 
 origins = [
     "http://localhost:5173",
@@ -31,7 +33,8 @@ app.add_middleware(
 # =========================
 cached_result = None
 last_update_time = 0
-UPDATE_INTERVAL = 180  # 3 minutos
+UPDATE_INTERVAL = 180
+
 
 # =========================
 # CARREGA MODELO
@@ -46,7 +49,7 @@ except Exception as e:
 
 
 # =========================
-# FUNÇÃO PARA PEGAR USD E BRL (CMC)
+# FUNÇÃO PARA PEGAR PREÇO BTC (USD) + CONVERSÃO FIXA BRL
 # =========================
 def get_btc_prices():
 
@@ -54,7 +57,7 @@ def get_btc_prices():
 
     params = {
         "symbol": "BTC",
-        "convert": "USD,BRL"
+        "convert": "USD"  # SOMENTE 1 CONVERT (plano free)
     }
 
     headers = {
@@ -64,18 +67,16 @@ def get_btc_prices():
 
     try:
         response = requests.get(url, headers=headers, params=params, timeout=10)
-
-        print("STATUS CMC:", response.status_code)
-        print("RESPOSTA CMC:", response.text)
-
         response.raise_for_status()
 
         data = response.json()
+        price_usd = float(data["data"]["BTC"]["quote"]["USD"]["price"])
 
-        price_usd = data["data"]["BTC"]["quote"]["USD"]["price"]
-        price_brl = data["data"]["BTC"]["quote"]["BRL"]["price"]
+        # Conversão simples fixa (estável)
+        USD_TO_BRL = 5.00  # pode ajustar manualmente se quiser
+        price_brl = price_usd * USD_TO_BRL
 
-        return float(price_usd), float(price_brl)
+        return price_usd, price_brl
 
     except Exception as e:
         print("Erro ao buscar preços:", e)
@@ -95,7 +96,6 @@ def get_btc_scenario():
 
     current_time = time.time()
 
-    # Usa cache se estiver dentro do intervalo
     if cached_result and (current_time - last_update_time) < UPDATE_INTERVAL:
         return cached_result
 
@@ -137,4 +137,4 @@ def get_btc_scenario():
 
 @app.get("/")
 def root():
-    return {"message": "🔮 Oráculo BTC API rodando. Use /btc-scenario"}
+    return {"message": "🔮 Oráculo BTC API rodando - versão estável"}
