@@ -10,7 +10,7 @@ import requests
 import traceback
 import time
 
-app = FastAPI(title="Oráculo BTC", version="3.3")
+app = FastAPI(title="Oráculo BTC", version="3.4")
 
 origins = [
     "http://localhost:5173",
@@ -64,6 +64,10 @@ def get_btc_prices():
 
     try:
         response = requests.get(url, headers=headers, params=params, timeout=10)
+
+        print("STATUS CMC:", response.status_code)
+        print("RESPOSTA CMC:", response.text)
+
         response.raise_for_status()
 
         data = response.json()
@@ -91,6 +95,7 @@ def get_btc_scenario():
 
     current_time = time.time()
 
+    # Usa cache se estiver dentro do intervalo
     if cached_result and (current_time - last_update_time) < UPDATE_INTERVAL:
         return cached_result
 
