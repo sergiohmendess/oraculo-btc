@@ -10,11 +10,12 @@ import requests
 import traceback
 import time
 
-app = FastAPI(title="Oráculo BTC", version="3.0")
+app = FastAPI(title="Oráculo BTC", version="3.3")
 
 origins = [
     "http://localhost:5173",
-    "http://127.0.0.1:5173"
+    "http://127.0.0.1:5173",
+    "*"
 ]
 
 app.add_middleware(
@@ -32,7 +33,6 @@ cached_result = None
 last_update_time = 0
 UPDATE_INTERVAL = 180  # 3 minutos
 
-
 # =========================
 # CARREGA MODELO
 # =========================
@@ -46,21 +46,36 @@ except Exception as e:
 
 
 # =========================
-# FUNÇÃO AUXILIAR PARA PEGAR BRL
+# FUNÇÃO PARA PEGAR USD E BRL (CMC)
 # =========================
-def get_btc_brl_price():
+def get_btc_prices():
+
+    url = "https://pro-api.coinmarketcap.com/v1/cryptocurrency/quotes/latest"
+
+    params = {
+        "symbol": "BTC",
+        "convert": "USD,BRL"
+    }
+
+    headers = {
+        "X-CMC_PRO_API_KEY": "9e63a969fe4d40528c3d4c7945050173",
+        "Accept": "application/json"
+    }
+
     try:
-        url = "https://api.coingecko.com/api/v3/simple/price"
-        params = {
-            "ids": "bitcoin",
-            "vs_currencies": "brl"
-        }
-        response = requests.get(url, params=params, timeout=5)
+        response = requests.get(url, headers=headers, params=params, timeout=10)
+        response.raise_for_status()
+
         data = response.json()
-        return float(data["bitcoin"]["brl"])
+
+        price_usd = data["data"]["BTC"]["quote"]["USD"]["price"]
+        price_brl = data["data"]["BTC"]["quote"]["BRL"]["price"]
+
+        return float(price_usd), float(price_brl)
+
     except Exception as e:
-        print("⚠ Erro ao buscar preço BRL:", e)
-        return 0
+        print("Erro ao buscar preços:", e)
+        return 0, 0
 
 
 # =========================
@@ -76,46 +91,23 @@ def get_btc_scenario():
 
     current_time = time.time()
 
-    # 🔥 Se ainda estiver dentro do intervalo, retorna cache
     if cached_result and (current_time - last_update_time) < UPDATE_INTERVAL:
-        print("⚡ Retornando resultado em cache")
         return cached_result
 
-    print("🔄 Atualizando cenário BTC...")
-
-    # Atualiza CSV
     try:
         update_csv()
-    except Exception as e:
-        print(f"❌ ERRO ao atualizar CSV: {e}")
-        traceback.print_exc()
-
-    # Carrega dados
-    try:
         df = load_data()
-        if df.empty:
-            raise ValueError("DataFrame vazio ao carregar dados BTC")
-    except Exception as e:
-        print(f"❌ ERRO ao carregar dados: {e}")
-        traceback.print_exc()
-        raise HTTPException(status_code=500, detail="Erro ao carregar dados")
-
-    # Gera cenário
-    try:
         result = generate_scenario(df, model)
     except Exception as e:
-        print(f"❌ ERRO ao gerar cenário: {e}")
+        print("Erro interno:", e)
         traceback.print_exc()
-        raise HTTPException(status_code=500, detail="Erro ao gerar cenário")
+        raise HTTPException(status_code=500, detail="Erro interno")
 
     prob_up = result["prob_up"]
     prob_down = result["prob_down"]
-    price_usd = result["close"]
 
-    # Busca preço BRL real
-    price_brl = get_btc_brl_price()
+    price_usd, price_brl = get_btc_prices()
 
-    # Tendência
     if prob_up > prob_down:
         trend = "Tendência de Alta 📈"
     elif prob_down > prob_up:
@@ -132,11 +124,8 @@ def get_btc_scenario():
         "timeframe": "15m"
     }
 
-    # 🔥 Atualiza cache
     cached_result = json_result
     last_update_time = current_time
-
-    print("🔮 Oráculo BTC enviando:", json_result)
 
     return json_result
 
