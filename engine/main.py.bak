@@ -1,0 +1,21 @@
+﻿from data_loader import load_data
+from model_loader import save_model, load_model
+from trainer import train_model
+from scenario_generator import generate_scenario
+
+def run():
+    df = load_data()
+
+    try:
+        model = load_model()
+        print('[main] Modelo carregado com sucesso!')
+    except:
+        model = train_model(df)
+        save_model(model)
+
+    result = generate_scenario(df, model)
+    print('\n📈 Resultado do cenário:')
+    print(result)
+
+if __name__ == '__main__':
+    run()

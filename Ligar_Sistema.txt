@@ -1,0 +1,13 @@
+Rodar backend:
+
+cd C:\Users\sergi\OneDrive\Desktop\cenario-btc
+python -m uvicorn api.app:app --reload --host 127.0.0.1 --port 8000
+
+
+Rodar frontend:
+
+cd C:\Users\sergi\OneDrive\Desktop\cenario-btc\frontend
+npm run dev
+
+
+Abrir http://localhost:5173 no navegador.

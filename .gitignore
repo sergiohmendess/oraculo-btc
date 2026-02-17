@@ -1,0 +1,22 @@
+# Node
+node_modules/
+dist/
+build/
+
+# Python
+venv/
+__pycache__/
+*.pyc
+
+# Logs
+*.log
+
+# Env
+.env
+
+# Vercel
+.vercel/
+
+# OS
+.DS_Store
+Thumbs.db

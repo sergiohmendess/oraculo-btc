@@ -1,0 +1,12 @@
+﻿FEATURES = ['rsi14', 'sma20', 'ema20', 'ret']
+
+def generate_scenario(df, model):
+    df = df.dropna(subset=FEATURES + ['close'])
+    last_row = df.iloc[-1]
+    features = last_row[FEATURES].values.reshape(1, -1)
+    proba = model.predict_proba(features)[0]
+    return {
+        'prob_up': float(proba[1]),
+        'prob_down': float(proba[0]),
+        'close': float(last_row['close'])
+    }
