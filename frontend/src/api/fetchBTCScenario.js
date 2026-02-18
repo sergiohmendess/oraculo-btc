@@ -1,9 +1,14 @@
 ﻿// frontend/src/api/fetchBTCScenario.js
 
-const BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
+const BASE_URL = import.meta.env.VITE_API_URL;
+
+if (!BASE_URL) {
+  throw new Error("VITE_API_URL não está definida no ambiente.");
+}
+
 const API_URL = `${BASE_URL}/btc-scenario`;
 
-const TIMEOUT = 7000; // 7 segundos (mais seguro para produção)
+const TIMEOUT = 7000; // 7 segundos
 
 /* =========================
    FUNÇÃO PRINCIPAL
@@ -66,10 +71,6 @@ export async function fetchBTCScenario() {
     clearTimeout(timeoutId);
 
     console.error("Erro ao buscar cenário BTC:", error.message);
-
-    /* =========================
-       FALLBACK SEGURO
-    ========================== */
 
     return {
       price_usd: 0,
