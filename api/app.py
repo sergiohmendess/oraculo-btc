@@ -9,10 +9,9 @@ from engine.update_btc import update_csv
 import requests
 import traceback
 import time
-import os
 
 
-app = FastAPI(title="Oráculo BTC", version="4.0-STABLE")
+app = FastAPI(title="Oráculo BTC", version="7.0-LIVE-BINANCE-PRO")
 
 origins = [
     "http://localhost:5173",
@@ -28,12 +27,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# =========================
-# CACHE GLOBAL
-# =========================
 cached_result = None
 last_update_time = 0
-UPDATE_INTERVAL = 180
+
+# Cache ultra curto apenas para evitar spam
+UPDATE_INTERVAL = 5  # segundos
 
 
 # =========================
@@ -49,38 +47,40 @@ except Exception as e:
 
 
 # =========================
-# FUNÇÃO PARA PEGAR PREÇO BTC (USD) + CONVERSÃO FIXA BRL
+# PREÇO AO VIVO BINANCE (PRO)
 # =========================
 def get_btc_prices():
-
-    url = "https://pro-api.coinmarketcap.com/v1/cryptocurrency/quotes/latest"
-
-    params = {
-        "symbol": "BTC",
-        "convert": "USD"  # SOMENTE 1 CONVERT (plano free)
-    }
-
-    headers = {
-        "X-CMC_PRO_API_KEY": "9e63a969fe4d40528c3d4c7945050173",
-        "Accept": "application/json"
-    }
-
     try:
-        response = requests.get(url, headers=headers, params=params, timeout=10)
-        response.raise_for_status()
+        # ===== BTCUSDT (USD)
+        usd_response = requests.get(
+            "https://api.binance.com/api/v3/ticker/bookTicker?symbol=BTCUSDT",
+            timeout=3
+        )
+        usd_response.raise_for_status()
+        usd_data = usd_response.json()
 
-        data = response.json()
-        price_usd = float(data["data"]["BTC"]["quote"]["USD"]["price"])
+        usd_bid = float(usd_data["bidPrice"])
+        usd_ask = float(usd_data["askPrice"])
+        price_usd = (usd_bid + usd_ask) / 2
 
-        # Conversão simples fixa (estável)
-        USD_TO_BRL = 5.00  # pode ajustar manualmente se quiser
-        price_brl = price_usd * USD_TO_BRL
+
+        # ===== BTCBRL (BRL REAL)
+        brl_response = requests.get(
+            "https://api.binance.com/api/v3/ticker/bookTicker?symbol=BTCBRL",
+            timeout=3
+        )
+        brl_response.raise_for_status()
+        brl_data = brl_response.json()
+
+        brl_bid = float(brl_data["bidPrice"])
+        brl_ask = float(brl_data["askPrice"])
+        price_brl = (brl_bid + brl_ask) / 2
 
         return price_usd, price_brl
 
     except Exception as e:
-        print("Erro ao buscar preços:", e)
-        return 0, 0
+        print("❌ Erro ao buscar preços Binance:", e)
+        return 0.0, 0.0
 
 
 # =========================
@@ -92,10 +92,11 @@ def get_btc_scenario():
     global cached_result, last_update_time
 
     if model is None:
-        raise HTTPException(status_code=500, detail="Modelo não está disponível")
+        raise HTTPException(status_code=500, detail="Modelo não disponível")
 
     current_time = time.time()
 
+    # Cache curto
     if cached_result and (current_time - last_update_time) < UPDATE_INTERVAL:
         return cached_result
 
@@ -113,6 +114,7 @@ def get_btc_scenario():
 
     price_usd, price_brl = get_btc_prices()
 
+    # Determinação da tendência
     if prob_up > prob_down:
         trend = "Tendência de Alta 📈"
     elif prob_down > prob_up:
@@ -125,8 +127,10 @@ def get_btc_scenario():
         "price_brl": round(price_brl, 2),
         "prob_up": round(prob_up * 100, 2),
         "prob_down": round(prob_down * 100, 2),
+        "confidence": round(abs(prob_up - prob_down) * 100, 2),
         "trend": trend,
-        "timeframe": "15m"
+        "timeframe": "15m",
+        "last_update": int(time.time())
     }
 
     cached_result = json_result
@@ -137,4 +141,6 @@ def get_btc_scenario():
 
 @app.get("/")
 def root():
-    return {"message": "🔮 Oráculo BTC API rodando - versão estável"}
+    return {
+        "message": "🔮 Oráculo BTC API rodando - v7.0 Live Binance PRO"
+    }

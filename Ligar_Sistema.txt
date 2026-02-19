@@ -10,4 +10,4 @@ cd C:\Users\sergi\OneDrive\Desktop\cenario-btc\frontend
 npm run dev
 
 
-Abrir http://localhost:5173 no navegador.
+Abrir http://localhost:5174 no navegador.

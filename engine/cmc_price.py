@@ -1,53 +1,57 @@
-# engine/cmc_price.py
-
 import requests
 import pandas as pd
 import os
 from datetime import datetime
 
-# SUA API KEY (mantendo como você pediu)
-API_KEY = "9e63a969fe4d40528c3d4c7945050173"
-
 # Caminho do CSV
 CSV_PATH = os.path.join("data", "btc_base.csv")
+
+BINANCE_BOOKTICKER_URL = "https://api.binance.com/api/v3/ticker/bookTicker"
 
 
 def fetch_btc_price():
     """
-    Pega o preço atual do BTC em USD e BRL usando CoinMarketCap.
+    Busca preço atual do BTC direto da Binance.
+    Retorna USD (BTCUSDT) e BRL (BTCBRL).
     """
 
-    url = "https://pro-api.coinmarketcap.com/v1/cryptocurrency/quotes/latest"
-
-    params = {
-        "symbol": "BTC",
-        "convert": "USD,BRL"
-    }
-
-    headers = {
-        "X-CMC_PRO_API_KEY": API_KEY,
-        "Accept": "application/json"
-    }
-
     try:
-        response = requests.get(url, headers=headers, params=params, timeout=10)
-        response.raise_for_status()
+        # ===== BTCUSDT =====
+        usd_resp = requests.get(
+            BINANCE_BOOKTICKER_URL,
+            params={"symbol": "BTCUSDT"},
+            timeout=5
+        )
+        usd_resp.raise_for_status()
+        usd_data = usd_resp.json()
 
-        data = response.json()
+        usd_bid = float(usd_data["bidPrice"])
+        usd_ask = float(usd_data["askPrice"])
+        price_usd = (usd_bid + usd_ask) / 2
 
-        price_usd = data["data"]["BTC"]["quote"]["USD"]["price"]
-        price_brl = data["data"]["BTC"]["quote"]["BRL"]["price"]
+        # ===== BTCBRL =====
+        brl_resp = requests.get(
+            BINANCE_BOOKTICKER_URL,
+            params={"symbol": "BTCBRL"},
+            timeout=5
+        )
+        brl_resp.raise_for_status()
+        brl_data = brl_resp.json()
 
-        return float(price_usd), float(price_brl)
+        brl_bid = float(brl_data["bidPrice"])
+        brl_ask = float(brl_data["askPrice"])
+        price_brl = (brl_bid + brl_ask) / 2
+
+        return price_usd, price_brl
 
     except Exception as e:
-        print(f"⚠️ Erro ao buscar preço CMC: {e}")
+        print(f"⚠️ Erro ao buscar preço Binance: {e}")
         return None, None
 
 
 def append_price_to_csv():
     """
-    Adiciona o preço atual do BTC no CSV.
+    Adiciona o preço atual do BTC ao CSV.
     """
 
     price_usd, price_brl = fetch_btc_price()
@@ -56,7 +60,7 @@ def append_price_to_csv():
         return
 
     new_row = {
-        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "timestamp": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),
         "close": price_usd,
         "close_brl": price_brl
     }
