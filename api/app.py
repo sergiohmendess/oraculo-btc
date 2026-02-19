@@ -10,7 +10,7 @@ import traceback
 import time
 
 
-app = FastAPI(title="Oráculo BTC", version="7.2-CLOUD-COINGECKO")
+app = FastAPI(title="Oráculo BTC", version="7.3-CLOUD-YAHOO")
 
 origins = [
     "http://localhost:5173",
@@ -46,32 +46,38 @@ except Exception as e:
 
 
 # =========================
-# PREÇO AO VIVO (COINGECKO)
+# PREÇO AO VIVO (YAHOO)
 # =========================
 def get_btc_prices():
     try:
-        print("🔄 Buscando preços na CoinGecko...")
+        print("🔄 Buscando preços no Yahoo Finance...")
 
-        url = "https://api.coingecko.com/api/v3/simple/price"
-        params = {
-            "ids": "bitcoin",
-            "vs_currencies": "usd,brl"
-        }
+        # BTC-USD
+        usd_url = "https://query1.finance.yahoo.com/v7/finance/quote?symbols=BTC-USD"
+        usd_response = requests.get(usd_url, timeout=10)
+        usd_response.raise_for_status()
+        usd_data = usd_response.json()
 
-        response = requests.get(url, params=params, timeout=10)
-        response.raise_for_status()
+        price_usd = float(
+            usd_data["quoteResponse"]["result"][0]["regularMarketPrice"]
+        )
 
-        data = response.json()
+        # BTC-BRL
+        brl_url = "https://query1.finance.yahoo.com/v7/finance/quote?symbols=BTC-BRL"
+        brl_response = requests.get(brl_url, timeout=10)
+        brl_response.raise_for_status()
+        brl_data = brl_response.json()
 
-        price_usd = float(data["bitcoin"]["usd"])
-        price_brl = float(data["bitcoin"]["brl"])
+        price_brl = float(
+            brl_data["quoteResponse"]["result"][0]["regularMarketPrice"]
+        )
 
         return price_usd, price_brl
 
     except Exception:
-        print("❌ ERRO DETALHADO COINGECKO:")
+        print("❌ ERRO DETALHADO YAHOO:")
         print(traceback.format_exc())
-        raise HTTPException(status_code=500, detail="Erro ao buscar preço da CoinGecko")
+        raise HTTPException(status_code=500, detail="Erro ao buscar preço do Yahoo")
 
 
 # =========================
@@ -133,5 +139,5 @@ def get_btc_scenario():
 @app.get("/")
 def root():
     return {
-        "message": "🔮 Oráculo BTC API rodando - v7.2 Cloud CoinGecko"
+        "message": "🔮 Oráculo BTC API rodando - v7.3 Cloud Yahoo"
     }
