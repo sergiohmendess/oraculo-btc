@@ -1,18 +1,24 @@
 ﻿// frontend/src/api/fetchBTCScenario.js
 
-const BASE_URL = import.meta.env.VITE_API_URL;
-
-if (!BASE_URL) {
-  throw new Error("VITE_API_URL não está definida no ambiente.");
-}
-
-const API_URL = `${BASE_URL}/btc-scenario`;
+// ==========================
+// BACKEND LOCAL HARD-CODED
+// ==========================
+// Substituí a variável de ambiente para teste definitivo
+const API_URL = "http://127.0.0.1:8000/btc-scenario";
 
 const TIMEOUT = 7000; // 7 segundos
 
-/* =========================
-   FUNÇÃO PRINCIPAL
-========================= */
+// ==========================
+// FUNÇÃO AUXILIAR SEGURA
+// ==========================
+function toNumber(value, fallback = 0) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : fallback;
+}
+
+// ==========================
+// FUNÇÃO PRINCIPAL
+// ==========================
 export async function fetchBTCScenario() {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), TIMEOUT);
@@ -20,9 +26,7 @@ export async function fetchBTCScenario() {
   try {
     const response = await fetch(API_URL, {
       method: "GET",
-      headers: {
-        "Accept": "application/json"
-      },
+      headers: { Accept: "application/json" },
       signal: controller.signal
     });
 
@@ -34,39 +38,28 @@ export async function fetchBTCScenario() {
 
     const data = await response.json();
 
-    /* =========================
-       NORMALIZAÇÃO ROBUSTA
-    ========================== */
-
-    const priceUSD =
-      data.price_usd !== undefined
-        ? Number(data.price_usd)
-        : Number(data.price);
-
-    const priceBRL =
-      data.price_brl !== undefined
-        ? Number(data.price_brl)
-        : 0;
-
-    const probUp = Number(data.prob_up) || 0;
-    const probDown = Number(data.prob_down) || 0;
-
+    // ==========================
+    // NORMALIZAÇÃO DEFINITIVA
+    // ==========================
+    const priceBRL = toNumber(data.price_brl);
+    const priceUSD = toNumber(data.price_usd);
+    const probUp = toNumber(data.prob_up);
+    const probDown = toNumber(data.prob_down);
     const confidence =
       data.confidence !== undefined
-        ? Number(data.confidence)
+        ? toNumber(data.confidence)
         : Math.abs(probUp - probDown);
 
     return {
-      price_usd: isFinite(priceUSD) ? priceUSD : 0,
-      price_brl: isFinite(priceBRL) ? priceBRL : 0,
-      prob_up: isFinite(probUp) ? probUp : 0,
-      prob_down: isFinite(probDown) ? probDown : 0,
+      price_usd: priceUSD,
+      price_brl: priceBRL,
+      prob_up: probUp,
+      prob_down: probDown,
       trend: data.trend || "Indefinida",
       timeframe: data.timeframe || "15m",
-      confidence: isFinite(confidence) ? confidence : 0,
+      confidence: confidence,
       last_update: data.last_update || null
     };
-
   } catch (error) {
     clearTimeout(timeoutId);
 
