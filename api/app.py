@@ -10,7 +10,7 @@ import traceback
 import time
 
 
-app = FastAPI(title="Oráculo BTC", version="7.1-CLOUD-STABLE")
+app = FastAPI(title="Oráculo BTC", version="7.2-CLOUD-COINGECKO")
 
 origins = [
     "http://localhost:5173",
@@ -46,42 +46,32 @@ except Exception as e:
 
 
 # =========================
-# PREÇO AO VIVO BINANCE
+# PREÇO AO VIVO (COINGECKO)
 # =========================
 def get_btc_prices():
     try:
-        print("🔄 Buscando preços na Binance...")
+        print("🔄 Buscando preços na CoinGecko...")
 
-        # ===== BTCUSDT (USD)
-        usd_response = requests.get(
-            "https://api.binance.com/api/v3/ticker/bookTicker?symbol=BTCUSDT",
-            timeout=5
-        )
-        usd_response.raise_for_status()
-        usd_data = usd_response.json()
+        url = "https://api.coingecko.com/api/v3/simple/price"
+        params = {
+            "ids": "bitcoin",
+            "vs_currencies": "usd,brl"
+        }
 
-        usd_bid = float(usd_data["bidPrice"])
-        usd_ask = float(usd_data["askPrice"])
-        price_usd = (usd_bid + usd_ask) / 2
+        response = requests.get(url, params=params, timeout=10)
+        response.raise_for_status()
 
-        # ===== BTCBRL (BRL)
-        brl_response = requests.get(
-            "https://api.binance.com/api/v3/ticker/bookTicker?symbol=BTCBRL",
-            timeout=5
-        )
-        brl_response.raise_for_status()
-        brl_data = brl_response.json()
+        data = response.json()
 
-        brl_bid = float(brl_data["bidPrice"])
-        brl_ask = float(brl_data["askPrice"])
-        price_brl = (brl_bid + brl_ask) / 2
+        price_usd = float(data["bitcoin"]["usd"])
+        price_brl = float(data["bitcoin"]["brl"])
 
         return price_usd, price_brl
 
     except Exception:
-        print("❌ ERRO DETALHADO BINANCE:")
+        print("❌ ERRO DETALHADO COINGECKO:")
         print(traceback.format_exc())
-        raise HTTPException(status_code=500, detail="Erro ao buscar preço da Binance")
+        raise HTTPException(status_code=500, detail="Erro ao buscar preço da CoinGecko")
 
 
 # =========================
@@ -102,9 +92,6 @@ def get_btc_scenario():
         return cached_result
 
     try:
-        # ❌ REMOVIDO update_csv()
-        # Cloud não deve depender de escrita em disco
-
         df = load_data()
         result = generate_scenario(df, model)
 
@@ -146,5 +133,5 @@ def get_btc_scenario():
 @app.get("/")
 def root():
     return {
-        "message": "🔮 Oráculo BTC API rodando - v7.1 Cloud Stable"
+        "message": "🔮 Oráculo BTC API rodando - v7.2 Cloud CoinGecko"
     }
