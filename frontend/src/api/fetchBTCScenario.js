@@ -5,7 +5,8 @@
 // ==========================
 const API_URL = "https://oraculo-btc.onrender.com/btc-scenario";
 
-const TIMEOUT = 7000; // 7 segundos
+// ⬆️ Aumentado para evitar erro no cold start do Render
+const TIMEOUT = 20000; // 20 segundos
 
 // ==========================
 // FUNÇÃO AUXILIAR SEGURA
@@ -26,7 +27,8 @@ export async function fetchBTCScenario() {
     const response = await fetch(API_URL, {
       method: "GET",
       headers: { Accept: "application/json" },
-      signal: controller.signal
+      signal: controller.signal,
+      cache: "no-store" // evita cache da Vercel
     });
 
     clearTimeout(timeoutId);
@@ -41,6 +43,7 @@ export async function fetchBTCScenario() {
     const priceUSD = toNumber(data.price_usd);
     const probUp = toNumber(data.prob_up);
     const probDown = toNumber(data.prob_down);
+
     const confidence =
       data.confidence !== undefined
         ? toNumber(data.confidence)
@@ -56,10 +59,11 @@ export async function fetchBTCScenario() {
       confidence: confidence,
       last_update: data.last_update || null
     };
+
   } catch (error) {
     clearTimeout(timeoutId);
 
-    console.error("Erro ao buscar cenário BTC:", error.message);
+    console.error("Erro ao buscar cenário BTC:", error);
 
     return {
       price_usd: 0,
