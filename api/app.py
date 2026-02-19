@@ -5,13 +5,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from engine.model_loader import load_model
 from engine.scenario_generator import generate_scenario
 from engine.data_loader import load_data
-from engine.update_btc import update_csv
 import requests
 import traceback
 import time
 
 
-app = FastAPI(title="Oráculo BTC", version="7.0-LIVE-BINANCE-PRO")
+app = FastAPI(title="Oráculo BTC", version="7.1-CLOUD-STABLE")
 
 origins = [
     "http://localhost:5173",
@@ -47,14 +46,16 @@ except Exception as e:
 
 
 # =========================
-# PREÇO AO VIVO BINANCE (PRO)
+# PREÇO AO VIVO BINANCE
 # =========================
 def get_btc_prices():
     try:
+        print("🔄 Buscando preços na Binance...")
+
         # ===== BTCUSDT (USD)
         usd_response = requests.get(
             "https://api.binance.com/api/v3/ticker/bookTicker?symbol=BTCUSDT",
-            timeout=3
+            timeout=5
         )
         usd_response.raise_for_status()
         usd_data = usd_response.json()
@@ -63,11 +64,10 @@ def get_btc_prices():
         usd_ask = float(usd_data["askPrice"])
         price_usd = (usd_bid + usd_ask) / 2
 
-
-        # ===== BTCBRL (BRL REAL)
+        # ===== BTCBRL (BRL)
         brl_response = requests.get(
             "https://api.binance.com/api/v3/ticker/bookTicker?symbol=BTCBRL",
-            timeout=3
+            timeout=5
         )
         brl_response.raise_for_status()
         brl_data = brl_response.json()
@@ -78,9 +78,10 @@ def get_btc_prices():
 
         return price_usd, price_brl
 
-    except Exception as e:
-        print("❌ Erro ao buscar preços Binance:", e)
-        return 0.0, 0.0
+    except Exception:
+        print("❌ ERRO DETALHADO BINANCE:")
+        print(traceback.format_exc())
+        raise HTTPException(status_code=500, detail="Erro ao buscar preço da Binance")
 
 
 # =========================
@@ -101,13 +102,16 @@ def get_btc_scenario():
         return cached_result
 
     try:
-        update_csv()
+        # ❌ REMOVIDO update_csv()
+        # Cloud não deve depender de escrita em disco
+
         df = load_data()
         result = generate_scenario(df, model)
-    except Exception as e:
-        print("Erro interno:", e)
-        traceback.print_exc()
-        raise HTTPException(status_code=500, detail="Erro interno")
+
+    except Exception:
+        print("❌ ERRO INTERNO:")
+        print(traceback.format_exc())
+        raise HTTPException(status_code=500, detail="Erro interno no processamento")
 
     prob_up = result["prob_up"]
     prob_down = result["prob_down"]
@@ -142,5 +146,5 @@ def get_btc_scenario():
 @app.get("/")
 def root():
     return {
-        "message": "🔮 Oráculo BTC API rodando - v7.0 Live Binance PRO"
+        "message": "🔮 Oráculo BTC API rodando - v7.1 Cloud Stable"
     }

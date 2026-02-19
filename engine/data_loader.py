@@ -1,8 +1,17 @@
-﻿import pandas as pd
+﻿# engine/data_loader.py
+
+import pandas as pd
+import os
 
 def load_data():
-    file_path = "data/btc_base.csv"
+
+    BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    file_path = os.path.join(BASE_DIR, "data", "btc_base.csv")
+
     print(f"[data_loader] Carregando: {file_path}")
+
+    if not os.path.exists(file_path):
+        raise FileNotFoundError(f"Arquivo CSV não encontrado em: {file_path}")
 
     df = pd.read_csv(file_path)
 

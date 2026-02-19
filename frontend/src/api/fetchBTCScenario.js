@@ -1,10 +1,9 @@
 ﻿// frontend/src/api/fetchBTCScenario.js
 
 // ==========================
-// BACKEND LOCAL HARD-CODED
+// BACKEND PRODUÇÃO (RENDER)
 // ==========================
-// Substituí a variável de ambiente para teste definitivo
-const API_URL = "http://127.0.0.1:8000/btc-scenario";
+const API_URL = "https://oraculo-btc.onrender.com/btc-scenario";
 
 const TIMEOUT = 7000; // 7 segundos
 
@@ -38,9 +37,6 @@ export async function fetchBTCScenario() {
 
     const data = await response.json();
 
-    // ==========================
-    // NORMALIZAÇÃO DEFINITIVA
-    // ==========================
     const priceBRL = toNumber(data.price_brl);
     const priceUSD = toNumber(data.price_usd);
     const probUp = toNumber(data.prob_up);
