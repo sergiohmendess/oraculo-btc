@@ -1,9 +1,0 @@
-from utils.indicators import rsi, sma, ema
-
-def create_features(df):
-    df['rsi14'] = rsi(df['close'], 14)
-    df['sma20'] = sma(df['close'], 20)
-    df['ema20'] = ema(df['close'], 20)
-    df['ret'] = df['close'].pct_change()
-    df = df.dropna()
-    return df

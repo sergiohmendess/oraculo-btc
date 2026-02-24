@@ -1,66 +1,46 @@
-# engine/update_btc.py
-
 import requests
 import pandas as pd
-from datetime import datetime
 import os
+from datetime import datetime
 
-CMC_API_KEY = "9e63a969fe4d40528c3d4c7945050173"
+DATA_PATH = "data/btc_5m.csv"
+SYMBOL = "BTCUSDT"
+INTERVAL = "5m"
+LIMIT = 1000
 
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-FILE_PATH = os.path.join(BASE_DIR, "data", "btc_base.csv")
+def update_data():
+    try:
+        url = "https://api.binance.com/api/v3/klines"
+        params = {
+            "symbol": SYMBOL,
+            "interval": INTERVAL,
+            "limit": LIMIT
+        }
 
+        response = requests.get(url, params=params, timeout=10)
+        response.raise_for_status()
+        data = response.json()
 
-def fetch_price():
-    url = "https://pro-api.coinmarketcap.com/v1/cryptocurrency/quotes/latest"
+        df = pd.DataFrame(data, columns=[
+            "open_time","open","high","low","close","volume",
+            "close_time","qav","num_trades",
+            "taker_base_vol","taker_quote_vol","ignore"
+        ])
 
-    headers = {
-        "Accepts": "application/json",
-        "X-CMC_PRO_API_KEY": CMC_API_KEY,
-    }
+        df = df[["open_time","open","high","low","close","volume"]]
 
-    params = {
-        "symbol": "BTC",
-        "convert": "USD"
-    }
+        df["open_time"] = pd.to_datetime(df["open_time"], unit="ms")
 
-    response = requests.get(url, headers=headers, params=params, timeout=10)
+        for col in ["open","high","low","close","volume"]:
+            df[col] = df[col].astype(float)
 
-    if response.status_code != 200:
-        raise Exception(f"Erro API CMC: {response.status_code} - {response.text}")
+        os.makedirs("data", exist_ok=True)
+        df.to_csv(DATA_PATH, index=False)
 
-    data = response.json()
-    price = data["data"]["BTC"]["quote"]["USD"]["price"]
+        print("✅ Dados atualizados:", datetime.now())
 
-    return float(price)
+    except Exception as e:
+        print("❌ Erro atualização:", e)
 
-
-def update_csv():
-
-    price = fetch_price()
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-    new_row = pd.DataFrame([{
-        "timestamp": timestamp,
-        "open": price,
-        "high": price,
-        "low": price,
-        "close": price,
-        "volume": 0
-    }])
-
-    if os.path.exists(FILE_PATH):
-        df = pd.read_csv(FILE_PATH)
-
-        if not df.empty and df.iloc[-1]["timestamp"] == timestamp:
-            print("⏳ Já atualizado neste minuto")
-            return
-
-        df = pd.concat([df, new_row], ignore_index=True)
-    else:
-        os.makedirs(os.path.dirname(FILE_PATH), exist_ok=True)
-        df = new_row
-
-    df.to_csv(FILE_PATH, index=False)
-
-    print(f"✅ CSV atualizado com preço {price:.2f} USD em {timestamp}")
+if __name__ == "__main__":
+    update_data()

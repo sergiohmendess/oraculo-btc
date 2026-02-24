@@ -1,12 +1,12 @@
 Rodar backend:
 
-cd C:\Users\sergi\OneDrive\Desktop\cenario-btc
+cd C:\Users\sergi\OneDrive\Desktop\Oraculo_BTC
 python -m uvicorn api.app:app --reload --host 127.0.0.1 --port 8000
 
 
 Rodar frontend:
 
-cd C:\Users\sergi\OneDrive\Desktop\cenario-btc\frontend
+cd C:\Users\sergi\OneDrive\Desktop\Oraculo_BTC\frontend
 npm run dev
 
 

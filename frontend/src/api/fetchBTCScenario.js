@@ -1,24 +1,13 @@
 ﻿// frontend/src/api/fetchBTCScenario.js
 
-// ==========================
-// BACKEND PRODUÇÃO (RENDER)
-// ==========================
-const API_URL = "https://oraculo-btc.onrender.com/btc-scenario";
+const API_URL = "http://127.0.0.1:8000/btc-scenario"; // ou sua URL de produção
+const TIMEOUT = 7000; // 7 segundos
 
-// ⬆️ Aumentado para evitar erro no cold start do Render
-const TIMEOUT = 20000; // 20 segundos
-
-// ==========================
-// FUNÇÃO AUXILIAR SEGURA
-// ==========================
 function toNumber(value, fallback = 0) {
   const n = Number(value);
   return Number.isFinite(n) ? n : fallback;
 }
 
-// ==========================
-// FUNÇÃO PRINCIPAL
-// ==========================
 export async function fetchBTCScenario() {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), TIMEOUT);
@@ -28,26 +17,20 @@ export async function fetchBTCScenario() {
       method: "GET",
       headers: { Accept: "application/json" },
       signal: controller.signal,
-      cache: "no-store" // evita cache da Vercel
     });
 
     clearTimeout(timeoutId);
 
-    if (!response.ok) {
-      throw new Error(`Erro HTTP ${response.status}`);
-    }
+    if (!response.ok) throw new Error(`Erro HTTP ${response.status}`);
 
     const data = await response.json();
 
-    const priceBRL = toNumber(data.price_brl);
     const priceUSD = toNumber(data.price_usd);
+    const priceBRL = toNumber(data.price_brl);
     const probUp = toNumber(data.prob_up);
     const probDown = toNumber(data.prob_down);
-
     const confidence =
-      data.confidence !== undefined
-        ? toNumber(data.confidence)
-        : Math.abs(probUp - probDown);
+      data.confidence !== undefined ? toNumber(data.confidence) : Math.abs(probUp - probDown);
 
     return {
       price_usd: priceUSD,
@@ -55,16 +38,13 @@ export async function fetchBTCScenario() {
       prob_up: probUp,
       prob_down: probDown,
       trend: data.trend || "Indefinida",
-      timeframe: data.timeframe || "15m",
-      confidence: confidence,
-      last_update: data.last_update || null
+      timeframe: data.timeframe || "5m",
+      confidence,
+      last_update: data.last_update || null,
     };
-
   } catch (error) {
     clearTimeout(timeoutId);
-
-    console.error("Erro ao buscar cenário BTC:", error);
-
+    console.error("Erro ao buscar cenário BTC:", error.message);
     return {
       price_usd: 0,
       price_brl: 0,
@@ -73,7 +53,7 @@ export async function fetchBTCScenario() {
       trend: "Erro de conexão",
       timeframe: "-",
       confidence: 0,
-      last_update: null
+      last_update: null,
     };
   }
 }

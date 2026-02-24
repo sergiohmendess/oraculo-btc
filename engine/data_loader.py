@@ -1,32 +1,17 @@
-﻿# engine/data_loader.py
+﻿import pandas as pd
+from pathlib import Path
 
-import pandas as pd
-import os
+# Caminho absoluto baseado na raiz do projeto
+BASE_DIR = Path(__file__).resolve().parent.parent
+DATA_PATH = BASE_DIR / "data" / "btc_base.csv"
 
 def load_data():
+    if not DATA_PATH.exists():
+        raise FileNotFoundError(f"Dataset não encontrado em {DATA_PATH}")
 
-    BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    file_path = os.path.join(BASE_DIR, "data", "btc_base.csv")
+    df = pd.read_csv(DATA_PATH)
 
-    print(f"[data_loader] Carregando: {file_path}")
-
-    if not os.path.exists(file_path):
-        raise FileNotFoundError(f"Arquivo CSV não encontrado em: {file_path}")
-
-    df = pd.read_csv(file_path)
-
-    print(f"[data_loader] Linhas carregadas: {len(df)}")
-
-    # Converter timestamp
-    df["timestamp"] = pd.to_datetime(df["timestamp"])
-
-    # Ordenar por data
-    df = df.sort_values("timestamp")
-
-    # Criar alvo (1 se subir, 0 se cair)
-    df["target"] = (df["close"].shift(-1) > df["close"]).astype(int)
-
-    # Remover última linha (sem target)
-    df = df.dropna()
+    # Garantir nomes corretos
+    df.columns = [c.lower() for c in df.columns]
 
     return df
